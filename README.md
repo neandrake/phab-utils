@@ -1,7 +1,7 @@
 # phab-utils
 Utilities for managing Phabricator install
 
-If you have questions use [Issues](https://github.com/neandrake/phab-utils/issues), if you would like to contribute use [Pull Requests](https://github.com/neandrake/phab-utils/issues).
+If you have questions use [Issues](https://github.com/neandrake/phab-utils/issues), if you would like to contribute use [Pull Requests](https://github.com/neandrake/phab-utils/pulls).
 
 #### TODO
 - [ ] Create `systemd` service files for aplict and phd. Currently these do not startup when the system reboots.
