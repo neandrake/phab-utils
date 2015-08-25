@@ -2,8 +2,8 @@
 Utilities for managing Phabricator install
 
 #### TODO
-[ ] Create `systemd` service files for aplict and phd. Currently these do not startup when the system reboots.
-[ ] Consider creating a single `systemd` service file to manage all services using something similar to `service` script.
+- [ ] Create `systemd` service files for aplict and phd. Currently these do not startup when the system reboots.
+- [ ] Consider creating a single `systemd` service file to manage all services using something similar to `service` script.
 
 ### Environment
 - Use the Phabricator Documentation for initial installation:
