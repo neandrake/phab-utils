@@ -83,9 +83,9 @@ I found this resource very helpful:
 
 1. Follow the guide from Phabricator for hosting repositories on Diffusion:
   - https://secure.phabricator.com/book/phabricator/article/diffusion_hosting/
-2. After following the guide you should have these additional files, on my system they reside in these absolute paths (See the contents in [the sshd folder](/sshd/):
-  - `/usr/lib/systemd/system/sshd-phab.service` - This is a `systemd` service definition. Placing this file here allows for it to be controlled by `systemctl` command, and can be configured to run on startup - in the same fashion as the regular sshd service.
-  - `/etc/ssh/sshd_config.phabricator` - This is the SSHD config which is used by the .service for executing the sshd binary.
-  - `/usr/libexec/phabricator-ssh-hook.sh` - This is referenced by the sshd_config.phabricator file to be used for delegating ssh authentication to a phabricator script. This file is verbatim from the Phabricator guide linked above - aside from configuring the `VCS_USER` and `ROOT` variables.
+2. After following the guide you should have these additional files, on my system they reside in these absolute paths (See the contents in [the sshd folder](/sshd/)):
+  - [`/usr/lib/systemd/system/sshd-phab.service`](/sshd/sshd-phab.service) - This is a `systemd` service definition. Placing this file here allows for it to be controlled by `systemctl` command, and can be configured to run on startup - in the same fashion as the regular sshd service.
+  - [`/etc/ssh/sshd_config.phabricator`](/sshd/sshd_config.phabricator) - This is the SSHD config which is used by the .service for executing the sshd binary.
+  - [`/usr/libexec/phabricator-ssh-hook.sh`](/sshd/phabricator-ssh-hook.sh) - This is referenced by the sshd_config.phabricator file to be used for delegating ssh authentication to a phabricator script. This file is verbatim from the Phabricator guide linked above - aside from configuring the `VCS_USER` and `ROOT` variables.
 3. Run `systemctl daemon-reload` to pick up on the new service. This should report everything is ok.
 4. You may need to run `systemctl enable sshd-phab.service` to configure the service to run on startup, however the current configuration should be set in that regard already.
