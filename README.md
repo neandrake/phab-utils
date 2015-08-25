@@ -64,6 +64,7 @@ This is useful when making configuration changes which requires restarting the p
 
 ##### Upgrade
 Upgrades the phabricator install to the latest version, creating a backup of the database and log of the revisions used.
+
 1. Stops all services
 2. Creates a backup folder for the day's upgrade in [install-location]/backups/
 3. Copies the local.json from phabricator directory into backup location
