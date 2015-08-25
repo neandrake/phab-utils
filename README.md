@@ -1,6 +1,10 @@
 # phab-utils
 Utilities for managing Phabricator install
 
+#### TODO
+[ ] Create `systemd` service files for aplict and phd. Currently these do not startup when the system reboots.
+[ ] Consider creating a single `systemd` service file to manage all services using something similar to `service` script.
+
 ### Environment
 - Use the Phabricator Documentation for initial installation:
   - https://secure.phabricator.com/book/phabricator/article/installation_guide/
@@ -23,8 +27,10 @@ Utilities for managing Phabricator install
   - `/usr/local/phacility/backups/` - During upgrades backup of the database and configurations are placed here
 
 ### Managing Services with the `service` Script
-The [service script](/service/service) is based off of the rough outline script from Phabricator:
- - https://secure.phabricator.com/book/phabricator/article/upgrading/
+ - The [service script](/service/service) is based off of the rough outline script from Phabricator:
+   - https://secure.phabricator.com/book/phabricator/article/upgrading/
+ - *My version of the script requires to be run as root/sudo, and will exit immediately if it determines that it does not have privilege.*
+ - The `service` script relies on having the SSHD service configured to be used by `systemctl`, see below.
 
 #### Configure the script
 If you use this script there are some variables at the top of the file which you should configure.
@@ -68,6 +74,16 @@ Upgrades the phabricator install to the latest version, creating a backup of the
 The upgrade process is useful for creating backup of content prior to upgrade along with tracking which revision of install is used.
 
 #### SSHD
-- `/usr/lib/systemd/system/sshd-phab.service`
-- `/etc/ssh/sshd_config.phabricator`
-- `/usr/libexec/phabricator-ssh-hook.sh`
+To configure a second sshd daemon to be controlled by Phabricator on CentOS 7, we configure `systemd` (which is the default service manager on that version).
+
+I found this resource very helpful:
+  - https://wiki.archlinux.org/index.php/Systemd
+
+1. Follow the guide from Phabricator for hosting repositories on Diffusion:
+  - https://secure.phabricator.com/book/phabricator/article/diffusion_hosting/
+2. After following the guide you should have these additional files, on my system they reside in these absolute paths (See the contents in [the sshd folder](/sshd/):
+  - `/usr/lib/systemd/system/sshd-phab.service` - This is a `systemd` service definition. Placing this file here allows for it to be controlled by `systemctl` command, and can be configured to run on startup - in the same fashion as the regular sshd service.
+  - `/etc/ssh/sshd_config.phabricator` - This is the SSHD config which is used by the .service for executing the sshd binary.
+  - `/usr/libexec/phabricator-ssh-hook.sh` - This is referenced by the sshd_config.phabricator file to be used for delegating ssh authentication to a phabricator script. This file is verbatim from the Phabricator guide linked above - aside from configuring the `VCS_USER` and `ROOT` variables.
+3. Run `systemctl daemon-reload` to pick up on the new service. This should report everything is ok.
+4. You may need to run `systemctl enable sshd-phab.service` to configure the service to run on startup, however the current configuration should be set in that regard already.
