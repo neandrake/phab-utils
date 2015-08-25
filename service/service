@@ -1,0 +1,178 @@
+#!/bin/sh
+
+# stops the script if any one command fails
+set -e
+
+# this script requires being run as root - prevent botched attempts that might potentially end in a half-complete state
+if [[ $EUID -ne 0 ]]; then
+	echo "This script must be run as root"
+	exit 1
+fi
+
+# parse options from arguments
+DATESTR=`date +'%b.%d.%Y_%H.%M.%S'`
+SCRIPTNAME=`basename $0`
+COMMAND=$1
+BRANCH=stable
+if [ ! -z "$2" ]; then
+	BRANCH=$2
+fi
+
+# print usage
+usage () {
+	echo "Usage:	$SCRIPTNAME <command> [<branch>]"
+	echo "	Manages the phabricator install."
+	echo "	Environment variables are used to locate the install and service users."
+	echo "	This script must be run as root."
+	echo
+	echo "	<command>  The command to execute:"
+	echo "		stop		Stops the services"
+	echo "		start		Starts the services"
+	echo "		restart		Restarts the services"
+	echo "		upgrade		Upgrades the install"
+	echo
+	echo "	<branch>  The branchname to checkout."
+	echo "		This should be either stable or master."
+	echo "		If not specified, defaults to stable."
+	echo "		Only used by upgrade command."
+	echo
+}
+
+# initialize context variables. at some point may read these in from arguments
+init () {
+	# cause every line executed to be displayed
+	set -x
+
+	# the path of the parent directory where the phabricator repositories are installed
+	ROOT=/usr/local/phacility
+
+	# path where revlog and db backups are stored
+	BAKPATH=$ROOT/backups
+
+	# file where revisions updated to are stored
+	REVLOG=$BAKPATH/revlog
+
+	# the user which owns the phabricator install
+	PHAB_USER=phabricator
+
+	# the group which owns the phabricator install
+	PHAB_GROUP=phacility
+
+	# the user which the daemons run as
+	PHAB_PHD_USER=phab-phd
+
+	# the user which the web service and fast-cgi server run as
+	WEB_USER=nginx
+}
+
+# stops the services related to phabricator
+d_stop () {
+	# the sshd service that is specific to VCS access managed by phabricator
+	systemctl stop sshd-phab.service
+
+	# the daemons used by phabricator - these are what work with the repos
+	sudo -u $PHAB_PHD_USER $ROOT/phabricator/bin/phd stop
+
+	# the notification server - i'm not positive which user this should be run as, perhaps the web-server user instead?
+	sudo -u $WEB_USER $ROOT/phabricator/bin/aphlict stop
+
+	# the web server
+	systemctl stop nginx.service
+
+	# the php 'fast-cgi' service
+	systemctl stop php-fpm.service
+}
+
+# starts the services related to phabricator
+# the order the services start is somewhat determined, specifically relating to the daemons and web service and php cgi
+d_start () {
+	# the php 'fast-cgi' service
+	systemctl start php-fpm.service
+
+	# the web server
+	systemctl start nginx.service
+
+	# the daemons used by phabricator - these are what work with the repos
+	sudo -u $PHAB_PHD_USER $ROOT/phabricator/bin/phd start
+
+	# the notification server - i'm not positive which user this should be run as, perhaps the web-server user instead?
+	sudo -u $WEB_USER $ROOT/phabricator/bin/aphlict start
+
+	# the sshd service that is specific to VCS access managed by phabricator
+	systemctl start sshd-phab.service
+}
+
+# performs just the upgrade process without modifying the state of services.
+# this also backs up the database and local configuration, along with updating the revlog.
+# the services should be stopped before this is run, and started after this completes.
+# this is prefixed with '_' to prevent directly calling it from the argument parsing below.
+_d_upgrade () {
+	echo "Performing Upgrade: $DATESTR" >> $REVLOG
+
+	# initialize directory for this backup's files
+	sudo -u $PHAB_USER mkdir $BAKPATH/$DATESTR
+
+	# backup configuration
+	sudo -u $PHAB_USER cp $ROOT/phabricator/conf/local/local.json $BAKPATH/$DATESTR
+	echo "local.json: $BAKPATH/$DATESTR/local.json" >> $REVLOG
+
+	# backup database for previous revision
+	echo "Backing up database (may take a while)..."
+	sudo -u $PHAB_USER $ROOT/phabricator/bin/storage dump | gzip > $BAKPATH/$DATESTR/database.sql.gz
+	echo "database: $BAKPATH/$DATESTR/database.sql.gz" >> $REVLOG
+
+	# update the repositories needed by phabricator
+	cd $ROOT/libphutil
+	REV_PRE=`git rev-parse HEAD`
+	sudo -u $PHAB_USER git pull -n
+	sudo -u $PHAB_USER git checkout $BRANCH
+	echo "libphutil: $REV_PRE -> `git rev-parse HEAD`" >> $REVLOG
+
+	cd $ROOT/arcanist
+	REV_PRE=`git rev-parse HEAD`
+	sudo -u $PHAB_USER git pull -n
+	sudo -u $PHAB_USER git checkout $BRANCH
+	echo "arcanist: $REV_PRE -> `git rev-parse HEAD`" >> $REVLOG
+
+	cd $ROOT/phabricator
+	REV_PRE=`git rev-parse HEAD`
+	sudo -u $PHAB_USER git pull -n
+	sudo -u $PHAB_USER git checkout $BRANCH
+	echo "phabricator: $REV_PRE -> `git rev-parse HEAD`" >> $REVLOG
+
+	echo "" >> $REVLOG
+
+	# update ownership of all files
+	chown -R $PHAB_USER:$PHAB_GROUP $ROOT
+
+	# run any database migrations/updates needed
+	sudo -u $PHAB_USER $ROOT/phabricator/bin/storage upgrade --force
+}
+
+# stops services, runs upgrade, starts services
+d_upgrade () {
+	d_stop
+	_d_upgrade
+	d_start
+}
+
+# stops and starts all services
+d_restart () {
+	d_stop
+	d_start
+}
+
+
+# directly run a function based on the first argument, or print usage
+case "$COMMAND" in
+	stop|start|upgrade|restart)
+		init
+		d_${COMMAND}
+		;;
+	*)
+		usage
+		exit 1
+		;;
+esac
+exit 0
+
