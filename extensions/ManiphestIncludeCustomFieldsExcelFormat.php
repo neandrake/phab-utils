@@ -17,7 +17,7 @@
  *   is actually allowed to view the custom field is completely ignored.
  */
 
-final class ManiphestExcelIncludeCustomFieldsFormat extends ManiphestExcelFormat {
+final class ManiphestIncludeCustomFieldsExcelFormat extends ManiphestExcelFormat {
   public function getName() {
     return pht('Deafult with Custom Fields');
   }
