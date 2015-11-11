@@ -16,10 +16,6 @@
  *   It was not clear what the appropriate manner for retrieving this data is
  *   so it is more likely to break with upgrades to Phabricator.
  *
- *   The only custom field types tested are the following:
- *    - PhabricatorStandardCustomFieldInt
- *    - PhabricatorStandardCustomFieldSelect
- *
  *   Another issues is that *_NO_* policy-checking is done on the fields - 
  *   It wasn't clear whether this was the case, but PhabricatorCustomField
  *   does seem to have some methods for setting/requiring a "viewer".
@@ -43,14 +39,6 @@ final class ManiphestExcelDefaultIncludeCustomFieldsFormat extends ManiphestExce
 
     $sheet = $workbook->setActiveSheetIndex(0);
     $sheet->setTitle(pht('Tasks'));
-
-    // Header Cell
-    // title => the displayed header title in the spreadsheet, in row 0
-    // width => initial width in pixels for the column, null leaves unspecified
-    // celltype => which format the column data should be set as, default is STRING
-    //   can be null if it's a date field
-    // isDate => there is no date format in the PHPExcel_Cell_DataType, so this is needed
-    // cftype => the custom field data type, only specified for custom field headers
 
     $colHeaders = array(
       array(
@@ -109,13 +97,9 @@ final class ManiphestExcelDefaultIncludeCustomFieldsFormat extends ManiphestExce
       ),
     );
 
-    // Create the custom fields from their configured definition and extract header cell details
     $customFields = id(new ManiphestConfiguredCustomField())->createFields(null);
-    $customFieldsHeaderMap = array();
+    $customFieldsMap = array();
     foreach ($customFields as $customField) {
-      // Using the proxy I think is needed due to using ManiphestConfiguredCustomField.createFields
-      // That seems to be wrapping the PhabricatorStandardCustomField, but doesn't proxy/delegate the
-      // getFieldType() method which is needed here.
     	$fieldName = $customField->getProxy()->getFieldName();
     	$fieldType = $customField->getProxy()->getFieldType();
 
@@ -132,7 +116,7 @@ final class ManiphestExcelDefaultIncludeCustomFieldsFormat extends ManiphestExce
     	  'isDate' => $isDateField,
     	  'cftype' => $fieldType,
     	);
-    	$customFieldsHeaderMap[$fieldName] = $customFieldHeader;
+    	$customFieldsMap[$fieldName] = $customFieldHeader;
     	$colHeaders[] = $customFieldHeader;
     }
 
@@ -184,7 +168,6 @@ final class ManiphestExcelDefaultIncludeCustomFieldsFormat extends ManiphestExce
         PhabricatorEnv::getProductionURI('/T'.$task->getID()),
       );
 
-      // Query for the custom fields for a specific maniphest task object
       $taskCustomFields = PhabricatorCustomField::getObjectFields($task, PhabricatorCustomField::ROLE_DEFAULT);
       $taskCustomFields->readFieldsFromStorage($task);
       $taskCustomFieldsMap = array();
@@ -192,11 +175,8 @@ final class ManiphestExcelDefaultIncludeCustomFieldsFormat extends ManiphestExce
       	$fieldName = $customField->getFieldName();
       	$taskCustomFieldsMap[$fieldName] = $customField;
       }
-
-      // We want to order the items from the task custom field object in the same order
-      // which the custom field headers exist in the $colHeaders array
-      // So loop over the header map, and pull the populated custom field from the populated map
-      foreach ($customFieldsHeaderMap as $fieldName => $customFieldHeader) {
+      // loop over the task's custom fields in the same order they appear in the header
+      foreach ($customFieldsMap as $fieldName => $customFieldHeader) {
       	$customField = $taskCustomFieldsMap[$fieldName];
       	if ($customField == null) {
       		$row[] = null;
@@ -204,9 +184,6 @@ final class ManiphestExcelDefaultIncludeCustomFieldsFormat extends ManiphestExce
       	}
 
       	$fieldValue = $customField->getProxy()->getFieldValue();
-
-        // option/select-style custom fields have values which are actually the identifier from json spec
-        // lookup the display value to be used from the 'getOptions()' on the PhabricatorStandardCustomFieldSelect
       	if ($fieldValue !== null && $customFieldHeader['cftype'] == 'select') {
       		$options = $customField->getProxy()->getOptions();
       		$fieldValue = $options[$fieldValue];
@@ -227,8 +204,6 @@ final class ManiphestExcelDefaultIncludeCustomFieldsFormat extends ManiphestExce
         $cell = $sheet
           ->setCellValue($cell_name, $spec, $return_cell = true);
 
-        // If the header row only apply the bold-style and width, but do not 
-        // apply the date-format/data-type since the values will always be string
         if ($row == 0) {
           $sheet->getStyle($cell_name)->applyFromArray($header_format);
 
