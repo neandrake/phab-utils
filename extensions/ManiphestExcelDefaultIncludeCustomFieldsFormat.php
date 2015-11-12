@@ -28,7 +28,7 @@
 
 final class ManiphestExcelDefaultIncludeCustomFieldsFormat extends ManiphestExcelFormat {
   public function getName() {
-    return pht('Deafult with Custom Fields');
+    return pht('Default with Custom Fields');
   }
 
   public function getFileName() {
@@ -102,6 +102,12 @@ final class ManiphestExcelDefaultIncludeCustomFieldsFormat extends ManiphestExce
         'isDate' => false,
       ),
       array(
+        'title' => pht('Columns'),
+        'width' => 20,
+        'celltype' => PHPExcel_Cell_DataType::TYPE_STRING,
+        'isDate' => false,
+      ),
+      array(
         'title' => pht('URI'),
         'width' => 30,
         'celltype' => PHPExcel_Cell_DataType::TYPE_STRING,
@@ -160,6 +166,33 @@ final class ManiphestExcelDefaultIncludeCustomFieldsFormat extends ManiphestExce
     }
     $rows[] = $headerRow;
 
+    $project_ids_used = array();
+    foreach ($tasks as $task) {
+      foreach ($task->getProjectPHIDs() as $phid) {
+        $project_ids_used[] = $phid;
+      }
+    }
+    $project_ids_used = array_unique($project_ids_used);
+
+    $ppositions = id(new PhabricatorProjectColumnPositionQuery())
+      ->setViewer($user)
+      ->withObjectPHIDs(mpull($tasks, 'getPHID'))
+      ->needColumns(true)
+      ->execute();
+    $ppositions = mpull($ppositions, null, 'getObjectPHID');
+
+    $task_phid_to_ppositions = array();
+    foreach ($tasks as $task) {
+      $task_phid = $task->getPHID();
+      if (empty($ppositions[$task_phid])) {
+        continue;
+      }
+      if (empty($task_phid_to_ppositions[$task_phid])) {
+        $task_phid_to_ppositions[$task_phid] = array();
+      }
+      $task_phid_to_ppositions[$task_phid][] = $ppositions[$task_phid];
+    }
+
     foreach ($tasks as $task) {
       $task_owner = null;
       if ($task->getOwnerPHID()) {
@@ -167,10 +200,18 @@ final class ManiphestExcelDefaultIncludeCustomFieldsFormat extends ManiphestExce
       }
 
       $projects = array();
+      $project_columns = array();
       foreach ($task->getProjectPHIDs() as $phid) {
         $projects[] = $handles[$phid]->getName();
       }
       $projects = implode(', ', $projects);
+
+      $pcolumn_names = array();
+      $task_ppositions = $task_phid_to_ppositions[$task->getPHID()];
+      foreach ($task_ppositions as $task_position) {
+        $pcolumn_names[] = $task_position->getColumn()->getDisplayName();
+      }
+      $pcolumn_names = implode(', ', $pcolumn_names);
 
       $row = array(
         'T'.$task->getID(),
@@ -181,6 +222,7 @@ final class ManiphestExcelDefaultIncludeCustomFieldsFormat extends ManiphestExce
         $this->computeExcelDate($task->getDateModified()),
         $task->getTitle(),
         $projects,
+        $pcolumn_names,
         PhabricatorEnv::getProductionURI('/T'.$task->getID()),
       );
 
