@@ -203,6 +203,9 @@ final class ManiphestExcelDefaultIncludeCustomFieldsFormat extends ManiphestExce
            $ppositions = mpull($ppositions, null, 'getObjectPHID');
 
            foreach ($ppositions as $pposition) {
+             if ($pposition->getSequence() == 0) {
+               continue;
+             }
              $pposition->attachColumn($task_column);
              if (empty($task_to_column[$task_id])) {
                $task_id_to_column[$task_id] = array();
