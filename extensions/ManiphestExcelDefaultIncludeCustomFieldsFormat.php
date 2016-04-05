@@ -174,23 +174,38 @@ final class ManiphestExcelDefaultIncludeCustomFieldsFormat extends ManiphestExce
     }
     $project_ids_used = array_unique($project_ids_used);
 
-    $ppositions = id(new PhabricatorProjectColumnPositionQuery())
-      ->setViewer($user)
-      ->withObjectPHIDs(mpull($tasks, 'getPHID'))
-      ->needColumns(true)
-      ->execute();
-    $ppositions = mpull($ppositions, null, 'getObjectPHID');
+    $task_to_column = array();
+    if (count($project_ids_used) > 0) {
+      $colquery = id(new PhabricatorProjectColumnQuery())
+        ->setViewer($user)
+        ->withProjectPHIDs($project_ids_used)
+        ->execute();
+      $columns = mpull($colquery, null, 'getPHID');
 
-    $task_phid_to_ppositions = array();
-    foreach ($tasks as $task) {
-      $task_phid = $task->getPHID();
-      if (empty($ppositions[$task_phid])) {
-        continue;
+      if (count($columns) == 0) {
+        break;
       }
-      if (empty($task_phid_to_ppositions[$task_phid])) {
-        $task_phid_to_ppositions[$task_phid] = array();
+
+      $column_ids = mpull($columns, 'getPHID');
+      $task_ids = mpull($tasks, 'getPHID');
+      foreach ($task_ids as $task_id) {
+        foreach ($column_ids as $column_id) {
+          $ppositions = id(new PhabricatorProjectColumnPositionQuery())
+             ->setViewer($user)
+             ->withObjectPHIDs(array($task_id))
+             ->withColumnPHIDs(array($column_id))
+             ->execute();
+           $ppositions = mpull($ppositions, null, 'getObjectPHID');
+
+           foreach ($ppositions as $pposition) {
+             $pposition->attachColumn($columns[$column_id]);
+             if (empty($task_to_column[$task_id])) {
+               $task_id_to_column[$task_id] = array();
+             }
+             $task_to_column[$task_id][] = $pposition;
+           }
+        }
       }
-      $task_phid_to_ppositions[$task_phid][] = $ppositions[$task_phid];
     }
 
     foreach ($tasks as $task) {
@@ -207,7 +222,7 @@ final class ManiphestExcelDefaultIncludeCustomFieldsFormat extends ManiphestExce
       $projects = implode(', ', $projects);
 
       $pcolumn_names = array();
-      $task_ppositions = $task_phid_to_ppositions[$task->getPHID()];
+      $task_ppositions = $task_to_column[$task->getPHID()];
       foreach ($task_ppositions as $task_position) {
         $pcolumn_names[] = $task_position->getColumn()->getDisplayName();
       }
