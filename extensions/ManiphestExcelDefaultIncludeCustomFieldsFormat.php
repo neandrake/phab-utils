@@ -192,7 +192,8 @@ final class ManiphestExcelDefaultIncludeCustomFieldsFormat extends ManiphestExce
         foreach ($column_ids as $column_id) {
           $task_column = $columns[$column_id];
           if ($task_column->isHidden()) {
-            continue;
+            // Ideally this would be a preference or something? Right now I need hidden columns though.
+            //continue;
           }
 
           $ppositions = id(new PhabricatorProjectColumnPositionQuery())
