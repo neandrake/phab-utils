@@ -190,6 +190,11 @@ final class ManiphestExcelDefaultIncludeCustomFieldsFormat extends ManiphestExce
       $task_ids = mpull($tasks, 'getPHID');
       foreach ($task_ids as $task_id) {
         foreach ($column_ids as $column_id) {
+          $task_column = $columns[$column_id];
+          if ($task_column->isHidden()) {
+            continue;
+          }
+
           $ppositions = id(new PhabricatorProjectColumnPositionQuery())
              ->setViewer($user)
              ->withObjectPHIDs(array($task_id))
@@ -198,7 +203,7 @@ final class ManiphestExcelDefaultIncludeCustomFieldsFormat extends ManiphestExce
            $ppositions = mpull($ppositions, null, 'getObjectPHID');
 
            foreach ($ppositions as $pposition) {
-             $pposition->attachColumn($columns[$column_id]);
+             $pposition->attachColumn($task_column);
              if (empty($task_to_column[$task_id])) {
                $task_id_to_column[$task_id] = array();
              }
