@@ -58,11 +58,6 @@ init () {
 	# the group which owns the phabricator install
 	PHAB_GROUP=phacility
 
-	# the user which the daemons run as
-	PHAB_PHD_USER=phab-phd
-
-	# the user which the web service and fast-cgi server run as
-	WEB_USER=nginx
 }
 
 # stops the services related to phabricator
@@ -71,10 +66,10 @@ d_stop () {
 	systemctl stop sshd-phab.service
 
 	# the daemons used by phabricator - these are what work with the repos
-	sudo -u $PHAB_PHD_USER $ROOT/phabricator/bin/phd stop
+    systemctl stop phab-phd.service
 
 	# the notification server - i'm not positive which user this should be run as, perhaps the web-server user instead?
-	sudo -u $WEB_USER $ROOT/phabricator/bin/aphlict stop
+    systemctl stop aphlict.service
 
 	# the web server
 	systemctl stop nginx.service
@@ -93,10 +88,10 @@ d_start () {
 	systemctl start nginx.service
 
 	# the daemons used by phabricator - these are what work with the repos
-	sudo -u $PHAB_PHD_USER $ROOT/phabricator/bin/phd start
+    systemctl start phab-phd.service
 
 	# the notification server - i'm not positive which user this should be run as, perhaps the web-server user instead?
-	sudo -u $WEB_USER $ROOT/phabricator/bin/aphlict start
+    systemctl start aphlict.service
 
 	# the sshd service that is specific to VCS access managed by phabricator
 	systemctl start sshd-phab.service

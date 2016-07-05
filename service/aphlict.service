@@ -1,0 +1,13 @@
+[Unit]
+Description=Aphlict Phabricator Notification Server
+After=nginx.service
+
+[Service]
+Type=forking
+User=nginx
+ExecStart=/usr/local/phacility/phabricator/bin/aphlict start
+ExecStop=/usr/local/phacility/phabricator/bin/aphlict stop
+PIDFile=/var/tmp/aphlict/pid/aphlict.pid
+
+[Install]
+WantedBy=multi-user.target
