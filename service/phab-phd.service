@@ -1,0 +1,11 @@
+[Unit]
+Description=Phabricator Background Daemons
+
+[Service]
+Type=forking
+User=phab-phd
+ExecStart=/usr/local/phacility/phabricator/bin/phd start
+ExecStop=/usr/local/phacility/phabricator/bin/phd stop
+
+[Install]
+WantedBy=multi-user.target
