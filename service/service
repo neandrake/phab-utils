@@ -58,11 +58,6 @@ init () {
 	# the group which owns the phabricator install
 	PHAB_GROUP=phacility
 
-	# the user which the daemons run as
-	PHAB_PHD_USER=phab-phd
-
-	# the user which the web service and fast-cgi server run as
-	WEB_USER=nginx
 }
 
 # stops the services related to phabricator
