@@ -4,7 +4,6 @@ Utilities for managing Phabricator install
 If you have questions use [Issues](https://github.com/neandrake/phab-utils/issues), if you would like to contribute use [Pull Requests](https://github.com/neandrake/phab-utils/pulls).
 
 #### TODO
-- [ ] Create `systemd` service files for aplict and phd. Currently these do not startup when the system reboots.
 - [ ] Consider creating a single `systemd` service file to manage all services using something similar to `service` script.
 
 ### Environment
@@ -44,8 +43,15 @@ If you use this script there are some variables at the top of the file which you
   - `REVLOG` - Path to file for storing the upgrade log. During each upgrade the database dump is logged along with each of the git repository `HEAD` revision prior to the upgrade. This is useful in the event of needing to restore to a previous working version.
   - `PHAB_USER` - Several actions are performed under this account, detailed above. The `ROOT` directory is set to be owned by this account.
   - `PHAB_GROUP` - The group account which the `ROOT` directory is set to be owned by, detailed above.
-  - `PHAB_PHD_USER` - The user account which the phd daemons runs as, detailed above.
-  - `WEB_USER` - THe user account which the http/nginx service runs as, detailed above.
+
+#### Configure the systemd scripts
+The service script relies on systemd scripts to manage Aphlict and the Phabricator PHD daemons.
+To use the included systemd scripts, move them to /etc/systemd/system and then run `systemctl daemon-reload`.
+
+These systemd scripts may be configured as follows:
+- `User=` - The user that this systemd script runs as.
+- `ExecStart=` - The command that runs when `systemctl start XXX.service` is run. The default values reflect the path structure specified in the "Environment" section.
+- `ExecStart=` - The command that runs when `systemctl stop XXX.service` is run, detailed above.
 
 #### Commands:
 ##### Stop/Start
