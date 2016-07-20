@@ -43,6 +43,7 @@ If you use this script there are some variables at the top of the file which you
   - `REVLOG` - Path to file for storing the upgrade log. During each upgrade the database dump is logged along with each of the git repository `HEAD` revision prior to the upgrade. This is useful in the event of needing to restore to a previous working version.
   - `PHAB_USER` - Several actions are performed under this account, detailed above. The `ROOT` directory is set to be owned by this account.
   - `PHAB_GROUP` - The group account which the `ROOT` directory is set to be owned by, detailed above.
+  - `MAX_BACKUPS` - Only keep this many system backups in $BAKPATH. Defaults to 3.
 
 #### Configure the systemd scripts
 The service script relies on systemd scripts to manage Aphlict and the Phabricator PHD daemons.
@@ -78,7 +79,8 @@ Upgrades the phabricator install to the latest version, creating a backup of the
 5. Updates each of the repositories, `libphutil`, `arcanist`, and `phabricator`, for each one updating the log to indicate which commit each one was previously at and upgraded to.
 6. Updates the ownership of the phabricator install files/folders.
 7. Runs database migration using `./bin/storage upgrade`.
-8. Starts all services
+8. Cleans out old Phabricator backups.
+9. Starts all services
 
 The upgrade process is useful for creating backup of content prior to upgrade along with tracking which revision of install is used.
 
