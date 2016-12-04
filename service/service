@@ -66,10 +66,10 @@ d_stop () {
 	systemctl stop sshd-phab.service
 
 	# the daemons used by phabricator - these are what work with the repos
-    systemctl stop phab-phd.service
+	systemctl stop phab-phd.service
 
 	# the notification server - i'm not positive which user this should be run as, perhaps the web-server user instead?
-    systemctl stop aphlict.service
+	systemctl stop aphlict.service
 
 	# the web server
 	systemctl stop nginx.service
@@ -88,10 +88,10 @@ d_start () {
 	systemctl start nginx.service
 
 	# the daemons used by phabricator - these are what work with the repos
-    systemctl start phab-phd.service
+	systemctl start phab-phd.service
 
 	# the notification server - i'm not positive which user this should be run as, perhaps the web-server user instead?
-    systemctl start aphlict.service
+	systemctl start aphlict.service
 
 	# the sshd service that is specific to VCS access managed by phabricator
 	systemctl start sshd-phab.service
