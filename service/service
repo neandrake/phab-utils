@@ -58,6 +58,8 @@ init () {
 	# the group which owns the phabricator install
 	PHAB_GROUP=phacility
 
+	# the maximum number of system backups to keep
+	MAX_BACKUPS=3
 }
 
 # stops the services related to phabricator
@@ -142,6 +144,14 @@ _d_upgrade () {
 
 	# run any database migrations/updates needed
 	sudo -u $PHAB_USER $ROOT/phabricator/bin/storage upgrade --force
+
+	# clear out old backups
+	# 1. List all files in the backup directory, ordered by date (descending)
+	# 2. Filter out the update log (revlog) from the list of files
+	# 3. Only list entries from line (MAX_BACKUPS + 1) onwards
+	# 4. For each remaining entry pass into `rm -rf`
+	cd $BAKPATH
+	ls -tp | grep -v revlog | tail -n +$(( $MAX_BACKUPS + 1)) | xargs -d '\n' rm -rf --
 }
 
 # stops services, runs upgrade, starts services
