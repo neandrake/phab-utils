@@ -1,5 +1,4 @@
 <?php
-
 /**
  * This is largely based off ManiphestExcelDefaultFormat with a few changes:
  * 1. (All) Custom Fields are included in the output.
@@ -25,25 +24,20 @@
  *   does seem to have some methods for setting/requiring a "viewer".
  *   This was not needed in the moment so it's ignored for the time being.
  */
-
-final class ManiphestExcelDefaultIncludeCustomFieldsFormat extends ManiphestExcelFormat {
+final class ManiphestExcelDefaultIncludeCustomFieldsFormatExtended extends ManiphestExcelFormat {
   public function getName() {
-    return pht('Default with Custom Fields');
+    return pht('Default with Custom Fields - extended');
   }
-
   public function getFileName() {
     return 'maniphest_tasks_'.date('Ymd');
   }
-
   public function buildWorkbook(
     PHPExcel $workbook,
     array $tasks,
     array $handles,
     PhabricatorUser $user) {
-
     $sheet = $workbook->setActiveSheetIndex(0);
     $sheet->setTitle(pht('Tasks'));
-
     // Header Cell
     // title => the displayed header title in the spreadsheet, in row 0
     // width => initial width in pixels for the column, null leaves unspecified
@@ -51,8 +45,13 @@ final class ManiphestExcelDefaultIncludeCustomFieldsFormat extends ManiphestExce
     //   can be null if it's a date field
     // isDate => there is no date format in the PHPExcel_Cell_DataType, so this is needed
     // cftype => the custom field data type, only specified for custom field headers
-
     $colHeaders = array(
+      array(
+        'title' => pht('URI'),
+        'width' => 30,
+        'celltype' => PHPExcel_Cell_DataType::TYPE_STRING,
+        'isDate' => false,
+      ),
       array(
         'title' => pht('ID'),
         'width' => null,
@@ -108,13 +107,12 @@ final class ManiphestExcelDefaultIncludeCustomFieldsFormat extends ManiphestExce
         'isDate' => false,
       ),
       array(
-        'title' => pht('URI'),
-        'width' => 30,
-        'celltype' => PHPExcel_Cell_DataType::TYPE_STRING,
+        'title' => pht('Points'),
+        'width' => 20,
+        'celltype' => PHPExcel_Cell_DataType::TYPE_NUMERIC,
         'isDate' => false,
       ),
     );
-
     // Create the custom fields from their configured definition and extract header cell details
     $customFields = id(new ManiphestConfiguredCustomField())->createFields(null);
     $customFieldsHeaderMap = array();
@@ -124,13 +122,14 @@ final class ManiphestExcelDefaultIncludeCustomFieldsFormat extends ManiphestExce
       // getFieldType() method which is needed here.
       $fieldName = $customField->getProxy()->getFieldName();
       $fieldType = $customField->getProxy()->getFieldType();
-
       $isDateField = $fieldType == 'date';
-      $cellType = PHPExcel_Cell_DataType::TYPE_STRING;
-      if ($fieldType == 'int') {
+      if ($isDateField) {
+        $cellType = null;
+      } elseif ($fieldType == 'int') {
         $cellType = PHPExcel_Cell_DataType::TYPE_NUMERIC;
+      } else {
+        $cellType = PHPExcel_Cell_DataType::TYPE_STRING;
       }
-
       $customFieldHeader = array(
         'title' => $fieldName,
         'width' => null,
@@ -141,31 +140,25 @@ final class ManiphestExcelDefaultIncludeCustomFieldsFormat extends ManiphestExce
       $customFieldsHeaderMap[$fieldName] = $customFieldHeader;
       $colHeaders[] = $customFieldHeader;
     }
-
     $colHeaders[] = array(
       'title' => pht('Description'),
       'width' => 100,
       'celltype' => PHPExcel_Cell_DataType::TYPE_STRING,
       'isDate' => false,
     );
-
     $status_map = ManiphestTaskStatus::getTaskStatusMap();
     $pri_map = ManiphestTaskPriority::getTaskPriorityMap();
-
     $header_format = array(
       'font'  => array(
         'bold' => true,
       ),
     );
-
     $rows = array();
-
     $headerRow = array();
     foreach ($colHeaders as $colIdx => $column) {
     $headerRow[] = $column['title'];
     }
     $rows[] = $headerRow;
-
     $project_ids_used = array();
     foreach ($tasks as $task) {
       foreach ($task->getProjectPHIDs() as $phid) {
@@ -173,7 +166,6 @@ final class ManiphestExcelDefaultIncludeCustomFieldsFormat extends ManiphestExce
       }
     }
     $project_ids_used = array_unique($project_ids_used);
-
     $task_to_column = array();
     if (count($project_ids_used) > 0) {
       $colquery = id(new PhabricatorProjectColumnQuery())
@@ -181,63 +173,55 @@ final class ManiphestExcelDefaultIncludeCustomFieldsFormat extends ManiphestExce
         ->withProjectPHIDs($project_ids_used)
         ->execute();
       $columns = mpull($colquery, null, 'getPHID');
-
-      if (count($columns) == 0) {
-        break;
-      }
-
-      $column_ids = mpull($columns, 'getPHID');
-      $task_ids = mpull($tasks, 'getPHID');
-      foreach ($task_ids as $task_id) {
-        foreach ($column_ids as $column_id) {
-          $task_column = $columns[$column_id];
-          if ($task_column->isHidden()) {
-            // Ideally this would be a preference or something? Right now I need hidden columns though.
-            //continue;
+      if (count($columns) > 0) {
+        $column_ids = mpull($columns, 'getPHID');
+        $task_ids = mpull($tasks, 'getPHID');
+        foreach ($task_ids as $task_id) {
+          foreach ($column_ids as $column_id) {
+            $task_column = $columns[$column_id];
+            if ($task_column->isHidden()) {
+              // Ideally this would be a preference or something? Right now I need hidden columns though.
+              //continue;
+            }
+            $ppositions = id(new PhabricatorProjectColumnPositionQuery())
+               ->setViewer($user)
+               ->withObjectPHIDs(array($task_id))
+               ->withColumnPHIDs(array($column_id))
+               ->execute();
+             $ppositions = mpull($ppositions, null, 'getObjectPHID');
+             foreach ($ppositions as $pposition) {
+               if ($pposition->getSequence() == 0) {
+                 continue;
+               }
+               $pposition->attachColumn($task_column);
+               if (empty($task_to_column[$task_id])) {
+                 $task_id_to_column[$task_id] = array();
+               }
+               $task_to_column[$task_id][] = $pposition;
+             }
           }
-
-          $ppositions = id(new PhabricatorProjectColumnPositionQuery())
-             ->setViewer($user)
-             ->withObjectPHIDs(array($task_id))
-             ->withColumnPHIDs(array($column_id))
-             ->execute();
-           $ppositions = mpull($ppositions, null, 'getObjectPHID');
-
-           foreach ($ppositions as $pposition) {
-             if ($pposition->getSequence() == 0) {
-               continue;
-             }
-             $pposition->attachColumn($task_column);
-             if (empty($task_to_column[$task_id])) {
-               $task_id_to_column[$task_id] = array();
-             }
-             $task_to_column[$task_id][] = $pposition;
-           }
         }
       }
     }
-
     foreach ($tasks as $task) {
       $task_owner = null;
       if ($task->getOwnerPHID()) {
         $task_owner = $handles[$task->getOwnerPHID()]->getName();
       }
-
       $projects = array();
       $project_columns = array();
       foreach ($task->getProjectPHIDs() as $phid) {
         $projects[] = $handles[$phid]->getName();
       }
       $projects = implode(', ', $projects);
-
       $pcolumn_names = array();
       $task_ppositions = $task_to_column[$task->getPHID()];
       foreach ($task_ppositions as $task_position) {
         $pcolumn_names[] = $task_position->getColumn()->getDisplayName();
       }
       $pcolumn_names = implode(', ', $pcolumn_names);
-
       $row = array(
+        PhabricatorEnv::getProductionURI('/T'.$task->getID()),
         'T'.$task->getID(),
         $task_owner,
         idx($status_map, $task->getStatus(), '?'),
@@ -247,9 +231,8 @@ final class ManiphestExcelDefaultIncludeCustomFieldsFormat extends ManiphestExce
         $task->getTitle(),
         $projects,
         $pcolumn_names,
-        PhabricatorEnv::getProductionURI('/T'.$task->getID()),
+        $task->getPoints(),
       );
-
       // Query for the custom fields for a specific maniphest task object
       $taskCustomFields = PhabricatorCustomField::getObjectFields($task, PhabricatorCustomField::ROLE_DEFAULT);
       $taskCustomFields->readFieldsFromStorage($task);
@@ -258,7 +241,6 @@ final class ManiphestExcelDefaultIncludeCustomFieldsFormat extends ManiphestExce
         $fieldName = $customField->getFieldName();
         $taskCustomFieldsMap[$fieldName] = $customField;
       }
-
       // We want to order the items from the task custom field object in the same order
       // which the custom field headers exist in the $colHeaders array
       // So loop over the header map, and pull the populated custom field from the populated map
@@ -268,36 +250,33 @@ final class ManiphestExcelDefaultIncludeCustomFieldsFormat extends ManiphestExce
           $row[] = null;
           continue;
         }
-
         $fieldValue = $customField->getProxy()->getFieldValue();
-
         // option/select-style custom fields have values which are actually the identifier from json spec
         // lookup the display value to be used from the 'getOptions()' on the PhabricatorStandardCustomFieldSelect
         if ($fieldValue !== null && $customFieldHeader['cftype'] == 'select') {
           $options = $customField->getProxy()->getOptions();
           $fieldValue = $options[$fieldValue];
         }
+        if ($fieldValue !== null && $customField->getProxy()->getFieldType() == 'date' ) {
+          // data formatted column
+          $fieldValue = $this->computeExcelDate( $fieldValue );
+        }
         $row[] = $fieldValue;
       }
-
       $row[] = id(new PhutilUTF8StringTruncator())
         ->setMaximumBytes(512)
         ->truncateString($task->getDescription());
-
       $rows[] = $row;
     }
-
     foreach ($rows as $row => $cols) {
       foreach ($cols as $col => $spec) {
         $cell_name = $this->col($col).($row + 1);
         $cell = $sheet
           ->setCellValue($cell_name, $spec, $return_cell = true);
-
         // If the header row only apply the bold-style and width, but do not 
         // apply the date-format/data-type since the values will always be string
         if ($row == 0) {
           $sheet->getStyle($cell_name)->applyFromArray($header_format);
-
           $width = $colHeaders[$col]['width'];
           if ($width !== null) {
             $sheet->getColumnDimension($this->col($col))->setWidth($width);
@@ -321,8 +300,9 @@ final class ManiphestExcelDefaultIncludeCustomFieldsFormat extends ManiphestExce
       }
     }
   }
-
   private function col($n) {
     return chr(ord('A') + $n);
   }
 }
+
+?>
