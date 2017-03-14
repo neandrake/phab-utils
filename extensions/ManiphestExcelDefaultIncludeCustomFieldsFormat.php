@@ -173,34 +173,33 @@ final class ManiphestExcelDefaultIncludeCustomFieldsFormatExtended extends Manip
         ->withProjectPHIDs($project_ids_used)
         ->execute();
       $columns = mpull($colquery, null, 'getPHID');
-      if (count($columns) == 0) {
-        break;
-      }
-      $column_ids = mpull($columns, 'getPHID');
-      $task_ids = mpull($tasks, 'getPHID');
-      foreach ($task_ids as $task_id) {
-        foreach ($column_ids as $column_id) {
-          $task_column = $columns[$column_id];
-          if ($task_column->isHidden()) {
-            // Ideally this would be a preference or something? Right now I need hidden columns though.
-            //continue;
+      if (count($columns) > 0) {
+        $column_ids = mpull($columns, 'getPHID');
+        $task_ids = mpull($tasks, 'getPHID');
+        foreach ($task_ids as $task_id) {
+          foreach ($column_ids as $column_id) {
+            $task_column = $columns[$column_id];
+            if ($task_column->isHidden()) {
+              // Ideally this would be a preference or something? Right now I need hidden columns though.
+              //continue;
+            }
+            $ppositions = id(new PhabricatorProjectColumnPositionQuery())
+               ->setViewer($user)
+               ->withObjectPHIDs(array($task_id))
+               ->withColumnPHIDs(array($column_id))
+               ->execute();
+             $ppositions = mpull($ppositions, null, 'getObjectPHID');
+             foreach ($ppositions as $pposition) {
+               if ($pposition->getSequence() == 0) {
+                 continue;
+               }
+               $pposition->attachColumn($task_column);
+               if (empty($task_to_column[$task_id])) {
+                 $task_id_to_column[$task_id] = array();
+               }
+               $task_to_column[$task_id][] = $pposition;
+             }
           }
-          $ppositions = id(new PhabricatorProjectColumnPositionQuery())
-             ->setViewer($user)
-             ->withObjectPHIDs(array($task_id))
-             ->withColumnPHIDs(array($column_id))
-             ->execute();
-           $ppositions = mpull($ppositions, null, 'getObjectPHID');
-           foreach ($ppositions as $pposition) {
-             if ($pposition->getSequence() == 0) {
-               continue;
-             }
-             $pposition->attachColumn($task_column);
-             if (empty($task_to_column[$task_id])) {
-               $task_id_to_column[$task_id] = array();
-             }
-             $task_to_column[$task_id][] = $pposition;
-           }
         }
       }
     }
