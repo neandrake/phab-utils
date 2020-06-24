@@ -2,7 +2,7 @@
 # was added in this version.
 
 # NOTE: Edit these to the correct values for your setup.
-AuthorizedKeysCommand /usr/libexec/phabricator-ssh-hook.sh
+AuthorizedKeysCommand /usr/libexec/phabricator-ssh-hook.sh %u --sshd-key %k
 AuthorizedKeysCommandUser hg
 AllowUsers hg
 
