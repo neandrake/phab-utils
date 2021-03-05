@@ -119,21 +119,17 @@ _d_upgrade () {
 	echo "database: $BAKPATH/$DATESTR/database.sql.gz" >> $REVLOG
 
 	# update the repositories needed by phabricator
-	cd $ROOT/libphutil
-	REV_PRE=`git rev-parse HEAD`
-	sudo -u $PHAB_USER git pull -n
-	sudo -u $PHAB_USER git checkout $BRANCH
-	echo "libphutil: $REV_PRE -> `git rev-parse HEAD`" >> $REVLOG
-
 	cd $ROOT/arcanist
 	REV_PRE=`git rev-parse HEAD`
-	sudo -u $PHAB_USER git pull -n
+	sudo -u $PHAB_USER git fetch --all
+	sudo -u $PHAB_USER git reset --hard origin/$BRANCH
 	sudo -u $PHAB_USER git checkout $BRANCH
 	echo "arcanist: $REV_PRE -> `git rev-parse HEAD`" >> $REVLOG
 
 	cd $ROOT/phabricator
 	REV_PRE=`git rev-parse HEAD`
-	sudo -u $PHAB_USER git pull -n
+	sudo -u $PHAB_USER git fetch --all
+	sudo -u $PHAB_USER git reset --hard origin/$BRANCH
 	sudo -u $PHAB_USER git checkout $BRANCH
 	echo "phabricator: $REV_PRE -> `git rev-parse HEAD`" >> $REVLOG
 
