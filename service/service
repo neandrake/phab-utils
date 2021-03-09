@@ -115,8 +115,8 @@ _d_upgrade () {
 
 	# backup database for previous revision
 	echo "Backing up database (may take a while)..."
-	sudo -u $PHAB_USER $ROOT/phabricator/bin/storage dump | gzip > $BAKPATH/$DATESTR/database.sql.gz
-	echo "database: $BAKPATH/$DATESTR/database.sql.gz" >> $REVLOG
+	mariabackup --backup --stream=xbstream | gzip > $BAKPATH/$DATESTR/db.gz
+	echo "database: $BAKPATH/$DATESTR/db.gz" >> $REVLOG
 
 	# update the repositories needed by phabricator
 	cd $ROOT/arcanist

@@ -12,6 +12,7 @@ If you have questions use [Issues](https://github.com/neandrake/phab-utils/issue
 - CentOS 7 Minimial Install (no GUI)
 - HTTP Server: nginx
 - PHP Proxy: php-fpm
+- Database: MariaDB 10.5
 - SSHD - on port 22 managed by phabricator
 - Accounts:
   - `phabricator` - This is likely unnecessary, though is the account I use for managing most phabricator stuff over the terminal
@@ -21,7 +22,6 @@ If you have questions use [Issues](https://github.com/neandrake/phab-utils/issue
 - Path Structure
   - `/usr/local/phacility/` - The root folder location where the phabricator application is installed
   - `/usr/local/phacility/phabricator/` - The `phabricator` git repository
-  - `/usr/local/phacility/libphutil/` - The `libphutil` git repository
   - `/usr/local/phacility/arcanist/` - The `arcanist` git repository
   - `/usr/local/phacility/service` - The service script from this repository
   - `/usr/local/phacility/accounts/` - Contains the home directories of the accounts listed above
@@ -63,7 +63,7 @@ Stops or starts services related to Phabricator:
 - aphlict
 - phd
 
-*Note that this doesn't stop/start MySQL - MySQL is required to be running during upgrade*
+*Note that this doesn't stop/start MariaDB/MySQL - the database is required to be running during upgrade*
 
 ##### Restart
 Performs a `stop` followed by `start`
@@ -75,8 +75,8 @@ Upgrades the phabricator install to the latest version, creating a backup of the
 1. Stops all services
 2. Creates a backup folder for the day's upgrade in [install-location]/backups/
 3. Copies the local.json from phabricator directory into backup location
-4. Does a `./bin/storage dump` to backup the database contents into an archive in the backup location.
-5. Updates each of the repositories, `libphutil`, `arcanist`, and `phabricator`, for each one updating the log to indicate which commit each one was previously at and upgraded to.
+4. Does a `mariabackup` to backup the entire database contents into an archive in the backup location, gzipped.
+5. Updates each of the repositories, `arcanist`, and `phabricator`, for each one updating the log to indicate which commit each one was previously at and upgraded to.
 6. Updates the ownership of the phabricator install files/folders.
 7. Runs database migration using `./bin/storage upgrade`.
 8. Cleans out old Phabricator backups.
