@@ -115,7 +115,7 @@ _d_upgrade () {
 
 	# backup database for previous revision
 	echo "Backing up database (may take a while)..."
-	mariabackup --backup --stream=xbstream | gzip > $BAKPATH/$DATESTR/db.gz
+	mariabackup --backup --stream=xbstream | pigz > $BAKPATH/$DATESTR/db.gz
 	echo "database: $BAKPATH/$DATESTR/db.gz" >> $REVLOG
 
 	# update the repositories needed by phabricator

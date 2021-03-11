@@ -13,6 +13,7 @@ If you have questions use [Issues](https://github.com/neandrake/phab-utils/issue
 - HTTP Server: nginx
 - PHP Proxy: php-fpm
 - Database: MariaDB 10.5
+  - The backup process relies on `mariabackup` as well as `pigz` which is used to parallelize the compression (can be swapped out for more-standard `gzip` but non-parallelized).
 - SSHD - on port 22 managed by phabricator
 - Accounts:
   - `phabricator` - This is likely unnecessary, though is the account I use for managing most phabricator stuff over the terminal
