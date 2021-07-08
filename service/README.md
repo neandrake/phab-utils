@@ -1,12 +1,12 @@
 ### Maintaining Customizations
 Some customizations to Phabricator can't be accomplished by extensions but require modifying the Phabricator source code.
 
-This can be maintained in a number of different ways. Here is the process I'm currently using. Note that it has a few rough edges. Rather than merging the `custom` branch into `stable` I am instead rebasing the `custom` branch on top of `stable`, which requires force-pushing the `custom` branch updates as well as ensuring when updating that the old branch state is blown away (the `service` script accounts for this using `git reset --hard`).
+This can be maintained in a number of different ways. Here is the process I'm currently using. Note that it has a few rough edges.
 
 #### General Process
 1. Set up and host a forked version of `arcanist` and `phabricator` repositories. This will be the `origin` remote location which the Phabricator server clones/pulls from.
 2. Create a separate branch which will contain the customizations, e.g. `custom`. Note that even if customizations only exist in one repo this branch needs to exist in both repos, as the `service` script assumes to setup both repositories to the same named branch.
-3. Update Phabricator by pulling updates from public/upstream, rebase `custom` onto latest `stable`, push to the forked repo.
+3. Update Phabricator by pulling updates from public/upstream, merge `custom` onto latest `stable`, push to the forked repo.
 
 #### Phabricator Server Setup
 The phabricator server needs to be configured to pull from the forked repository as well as use the `custom` branch. For both `phabricator` and `arcanist` repositories on the Phabricator server do the following.
@@ -35,37 +35,38 @@ Do this for both `phabricator` and `arcanist` repositories:
 $ git clone ssh://git@my-hosted-server.com:phacility/phabricator.git
 $ cd phabricator
 # setup to only fast-forward merge
-$ git config pull.ff only
+$ git config merge.ff only
 
 # checkout the stable, master, and custom branches
-$ git checkout --track -b stable origin/stable
-$ git checkout --track -b master origin/master
+$ git checkout --track -b origin-stable origin/stable
+$ git checkout --track -b origin-master origin/master
 $ git checkout --track -b custom origin/custom
 
 # add upstream remote
 $ git remote add upstream git@github.com:phacility/phabricator.git
+$ git checkout --track -b upstream-stable upstream/stable
+$ git checkout --track -b upstream-master upstream/master
 ```
 
 #### Updating
-When ready to pull in the latest updates from Phabricator, pull in the public changes, update the `master` and `stable` branches to match, then rebase `custom` on top of `stable` (or `master`)
+When ready to pull in the latest updates from Phabricator, pull in the public changes from `upstream`, update the `upstream-master` and `upstream-stable` branches to match, merge the `origin-master` and `origin-stable` branches to the upstream versions, then merge `custom` on top of `origin-stable` (or `origin-master`).
 
 ```bash
-# update from upstream's stable & master and update origin/stable & origin/master match
-$ git fetch upstream
-$ git checkout origin/stable
-$ git pull upstream stable # should do a fast-forward
-$ git checkout origin/master
-$ git pull upstream master # should do a fast-forward
+# pull updates from both origin and upstream, update the local branches to their updated states
+# do this for both arcanist and phabricator, for both stable and master branch variants
+$ git fetch --all
+$ git checkout upstream-stable
+$ git pull                       # ff-only pull to update upstream-stable to (remote) upstream/stable
+$ git checkout origin-stable
+$ git merge upstream-stable      # merge the origin-stable to match upstream-stable
+$ git push origin origin-stable  # push the updated stable branch to origin
 
-# push updated stable & master to the forked repository
-$ git push -u origin --all
-
-# rebase custom branch on top of new stable
+# merge custom branch onto new stable
 $ git checkout custom
-$ git rebase stable
-# address conflicts, if any (don't merge)
+$ git merge origin-stable
+# address conflicts, if any
 
-# force-push the custom branch since we did a rebase instead of merge
-$ git push --force -u origin custom
+# push the custom branch
+$ git push origin custom
 ```
 
